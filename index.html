@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Mon Application</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  margin: 0;
+}
+header {
+  background: #222;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
+nav button {
+  margin: 5px;
+  padding: 10px;
+}
+section {
+  display: none;
+  padding: 20px;
+}
+section.active {
+  display: block;
+}
+input, textarea {
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+}
+button {
+  cursor: pointer;
+}
+.admin {
+  color: red;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Mon Application</h1>
+  <nav>
+    <button onclick="show('home')">Accueil</button>
+    <button onclick="show('auth')">Connexion</button>
+    <button onclick="show('support')">Support</button>
+    <button onclick="show('admin')">Admin</button>
+  </nav>
+</header>
+
+<!-- ACCUEIL -->
+<section id="home" class="active">
+  <h2>Bienvenue</h2>
+  <p>Application avec comptes, admin et support.</p>
+</section>
+
+<!-- AUTH -->
+<section id="auth">
+  <h2>Connexion / Inscription</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Mot de passe">
+  <button onclick="signup()">Créer un compte</button>
+  <button onclick="login()">Se connecter</button>
+  <p id="auth-status"></p>
+</section>
+
+<!-- SUPPORT -->
+<section id="support">
+  <h2>Support</h2>
+  <input id="support-email" placeholder="Votre email">
+  <textarea id="support-msg" placeholder="Votre message"></textarea>
+  <button onclick="sendSupport()">Envoyer</button>
+</section>
+
+<!-- ADMIN -->
+<section id="admin">
+  <h2>Panel Admin</h2>
+  <p id="admin-content">Chargement...</p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+// 🔧 CONFIGURATION SUPABASE
+const SUPABASE_URL = "https://TON-PROJET.supabase.co";
+const SUPABASE_KEY = "PUBLIC-ANON-KEY";
+const ADMIN_EMAIL = "maenourry1103@gmail.com";
+
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// NAVIGATION
+function show(id) {
+  document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// INSCRIPTION
+async function signup() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return alert(error.message);
+
+  const role = email === ADMIN_EMAIL ? "admin" : "user";
+
+  await supabase.from("profiles").insert({
+    id: data.user.id,
+    email,
+    role
+  });
+
+  document.getElementById("auth-status").innerText =
+    role === "admin" ? "Compte admin créé 👑" : "Compte utilisateur créé";
+}
+
+// CONNEXION
+async function login() {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.value,
+    password: password.value
+  });
+  if (error) alert(error.message);
+  else document.getElementById("auth-status").innerText = "Connecté ✅";
+}
+
+// SUPPORT
+async function sendSupport() {
+  await supabase.from("support").insert({
+    email: document.getElementById("support-email").value,
+    message: document.getElementById("support-msg").value
+  });
+  alert("Message envoyé au support !");
+}
+
+// ADMIN CHECK
+async function checkAdmin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (data?.role === "admin") {
+    document.getElementById("admin-content").innerHTML =
+      "<span class='admin'>Accès admin autorisé 👑</span>";
+  } else {
+    document.getElementById("admin-content").innerText = "Accès refusé";
+  }
+}
+
+checkAdmin();
+</script>
+
+</body>
+</html>
